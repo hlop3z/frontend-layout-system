@@ -1,9 +1,11 @@
 import { memo } from 'preact/compat';
-import { useMemo, useRef } from 'preact/hooks';
+import { useRef } from 'preact/hooks';
 import type { JSX } from 'preact';
 import { emitCommand, type CommandSource } from '../signals/commandBus';
 
 export interface PaletteCommand {
+  readonly name: string;
+  readonly label: string;
   readonly type: string;
   readonly payload?: Record<string, unknown>;
 }
@@ -15,6 +17,7 @@ export interface CommandPaletteItem {
   readonly command: PaletteCommand;
   readonly accentColor?: string;
   readonly draggable?: boolean;
+  readonly activation?: 'click' | 'double';
 }
 
 export interface CommandPaletteSection {
@@ -23,10 +26,21 @@ export interface CommandPaletteSection {
   readonly items: readonly CommandPaletteItem[];
 }
 
-interface CommandPaletteProps {
+export interface CommandPaletteProps {
   readonly sections: readonly CommandPaletteSection[];
   readonly onExecute?: (command: PaletteCommand, source: CommandSource) => void;
 }
+
+const CONTAINER_STYLE: JSX.CSSProperties = {
+  height: '100%',
+  width: '100%',
+  backgroundColor: '#252526',
+  color: '#cccccc',
+  overflowY: 'auto',
+  overflowX: 'hidden',
+  fontSize: '13px',
+  borderRight: '1px solid #3e3e42',
+} as const;
 
 const toggleDragCursor = (isActive: boolean) => {
   if (typeof document === 'undefined') return;
@@ -36,27 +50,15 @@ const toggleDragCursor = (isActive: boolean) => {
 function CommandPalette({ sections, onExecute }: CommandPaletteProps) {
   const draggingItemRef = useRef<CommandPaletteItem | null>(null);
 
-  const containerStyle = useMemo<JSX.CSSProperties>(
-    () => ({
-      height: '100%',
-      width: '100%',
-      backgroundColor: '#252526',
-      color: '#cccccc',
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      fontSize: '13px',
-      borderRight: '1px solid #3e3e42',
-    }),
-    [],
-  );
-
   const triggerCommand = (item: CommandPaletteItem, source: CommandSource) => {
-    const commandHandler = onExecute ?? ((command, commandSource) => emitCommand(command.type, command.payload, commandSource));
+    const commandHandler =
+      onExecute ??
+      ((command, commandSource) => emitCommand(command.name, command.label, command.type, command.payload, commandSource));
     commandHandler(item.command, source);
   };
 
   return (
-    <div style={containerStyle}>
+    <div style={CONTAINER_STYLE}>
       <div style={{ padding: '8px 0' }}>
         {sections.map((section, sectionIndex) => (
           <div key={section.id}>
@@ -93,7 +95,16 @@ function CommandPalette({ sections, onExecute }: CommandPaletteProps) {
                   }
                   toggleDragCursor(false);
                 }}
-                onDblClick={() => triggerCommand(item, 'click')}
+                onClick={
+                  (!item.draggable && (item.activation ?? 'click') === 'click')
+                    ? () => triggerCommand(item, 'click')
+                    : undefined
+                }
+                onDblClick={
+                  (item.draggable || (item.activation ?? 'click') === 'double')
+                    ? () => triggerCommand(item, 'click')
+                    : undefined
+                }
                 style={{
                   padding: '6px 16px',
                   cursor: item.draggable ? 'grab' : 'pointer',

@@ -1,15 +1,15 @@
-import { useRef, useEffect, useState, useCallback } from 'preact/hooks';
-import type { JSX } from 'preact';
-import { layoutConfig } from '../config/layout';
-import { memo } from 'preact/compat';
-import type { ComponentChildren } from 'preact';
+import { useRef, useEffect, useState, useCallback } from "preact/hooks";
+import type { JSX } from "preact";
+import { layoutConfig } from "../config/layout";
+import { memo } from "preact/compat";
+import type { ComponentChildren } from "preact";
 
 interface ResizableSidebarProps {
   readonly children: ComponentChildren;
   readonly initialWidth: number;
   readonly minWidth?: number;
   readonly maxWidth?: number;
-  readonly side: 'left' | 'right';
+  readonly side: "left" | "right";
   readonly onResize?: (width: number) => void;
 }
 
@@ -22,41 +22,35 @@ function ResizableSidebar({
   onResize,
 }: ResizableSidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const resizeHandleRef = useRef<HTMLDivElement>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
-  const stopResizing = useCallback(() => {
-    setIsResizing(false);
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
+  const toggleBodyInteraction = useCallback((active: boolean) => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    document.body.style.cursor = active ? "ew-resize" : "";
+    document.body.style.userSelect = active ? "none" : "";
   }, []);
 
-  const handleMouseDown = useCallback(
-    (e: MouseEvent) => {
-      e.preventDefault();
+  const stopResizing = useCallback(() => {
+    setIsResizing(false);
+    setIsHovered(false);
+    toggleBodyInteraction(false);
+  }, [toggleBodyInteraction]);
+
+  const handleMouseDown = useCallback<JSX.MouseEventHandler<HTMLDivElement>>(
+    (event) => {
+      event.preventDefault();
       setIsResizing(true);
-      startXRef.current = e.clientX;
+      startXRef.current = event.clientX;
       startWidthRef.current = sidebarRef.current?.offsetWidth ?? initialWidth;
-
-      document.body.style.cursor = 'ew-resize';
-      document.body.style.userSelect = 'none';
+      toggleBodyInteraction(true);
     },
-    [initialWidth]
+    [initialWidth, toggleBodyInteraction]
   );
-
-  useEffect(() => {
-    const handle = resizeHandleRef.current;
-    if (!handle) return;
-
-    handle.addEventListener('mousedown', handleMouseDown);
-
-    return () => {
-      handle.removeEventListener('mousedown', handleMouseDown);
-    };
-  }, [handleMouseDown]);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -64,9 +58,15 @@ function ResizableSidebar({
     const handleMouseMove = (e: MouseEvent) => {
       if (!sidebarRef.current) return;
 
-      const deltaX = side === 'left' ? e.clientX - startXRef.current : startXRef.current - e.clientX;
+      const deltaX =
+        side === "left"
+          ? e.clientX - startXRef.current
+          : startXRef.current - e.clientX;
 
-      const newWidth = Math.max(minWidth, Math.min(maxWidth, startWidthRef.current + deltaX));
+      const newWidth = Math.max(
+        minWidth,
+        Math.min(maxWidth, startWidthRef.current + deltaX)
+      );
 
       sidebarRef.current.style.width = `${newWidth}px`;
       onResize?.(newWidth);
@@ -76,42 +76,42 @@ function ResizableSidebar({
       stopResizing();
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing, side, minWidth, maxWidth, onResize, stopResizing]);
 
   const resizeHandleStyle: JSX.CSSProperties = {
     width: `${layoutConfig.resizeHandleWidth}px`,
-    height: '100%',
+    height: "100%",
     flexShrink: 0,
-    cursor: 'ew-resize',
-    backgroundColor: isHovered || isResizing ? '#007acc' : 'transparent',
-    position: 'relative',
-    transition: isResizing ? 'none' : 'background-color 0.2s',
+    cursor: "ew-resize",
+    backgroundColor: isHovered || isResizing ? "#007acc" : "transparent",
+    position: "relative",
+    transition: isResizing ? "none" : "background-color 0.2s",
   };
 
   const containerStyle: JSX.CSSProperties = {
-    display: 'flex',
-    flexDirection: side === 'left' ? 'row' : 'row-reverse',
-    alignItems: 'stretch',
-    height: '100%',
+    display: "flex",
+    flexDirection: side === "left" ? "row" : "row-reverse",
+    alignItems: "stretch",
+    height: "100%",
     flexShrink: 0,
     gap: 0,
   };
 
   const sidebarStyle: JSX.CSSProperties = {
     width: `${initialWidth}px`,
-    height: '100%',
+    height: "100%",
     flexShrink: 0,
-    position: 'relative',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
+    position: "relative",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
   };
 
   return (
@@ -120,20 +120,20 @@ function ResizableSidebar({
         {children}
       </div>
       <div
-        ref={resizeHandleRef}
         style={resizeHandleStyle}
+        onMouseDown={handleMouseDown}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => !isResizing && setIsHovered(false)}
       >
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
-            left: side === 'left' ? '1px' : undefined,
-            right: side === 'right' ? '1px' : undefined,
-            width: '1px',
-            height: '100%',
-            backgroundColor: '#3e3e42',
+            left: side === "left" ? "1px" : undefined,
+            right: side === "right" ? "1px" : undefined,
+            width: "1px",
+            height: "100%",
+            backgroundColor: "#3e3e42",
           }}
         />
       </div>
@@ -143,4 +143,3 @@ function ResizableSidebar({
 
 export const ResizableSidebarComponent = memo(ResizableSidebar);
 export { ResizableSidebarComponent as ResizableSidebar };
-

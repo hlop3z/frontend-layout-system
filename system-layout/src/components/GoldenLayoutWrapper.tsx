@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo, useCallback } from 'preact/hooks';
+import { useRef, useEffect, useCallback } from 'preact/hooks';
 import type { JSX } from 'preact';
 import { memo } from 'preact/compat';
 import { effect } from '@preact/signals';
@@ -14,54 +14,46 @@ interface GoldenLayoutWrapperProps {
   readonly containerId?: string;
 }
 
+const createPanelConfig = (panelId: PanelKind, size?: string): ComponentItemConfig => {
+  const definition = panelDefinitionMap[panelId];
+  return {
+    type: 'component',
+    componentType: 'colored-panel',
+    title: definition.title,
+    componentState: { label: definition.label, color: definition.color },
+    header: {
+      popout: false,
+    },
+    ...(size !== undefined ? { size } : {}),
+  };
+};
+
+const getInitialLayoutConfig = (): LayoutConfig => ({
+  settings: {
+    showPopoutIcon: false,
+  },
+  root: {
+    type: 'row',
+    content: [
+      createPanelConfig('red', '50%'),
+      {
+        type: 'column',
+        content: [
+          createPanelConfig('blue', '40%'),
+          {
+            type: 'row',
+            content: [createPanelConfig('yellow', '50%'), createPanelConfig('green', '50%')],
+          },
+        ],
+      },
+    ],
+  },
+});
+
 function GoldenLayoutWrapper({ containerId = 'golden-layout-container' }: GoldenLayoutWrapperProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const layoutRef = useRef<GoldenLayout | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
-
-  const createPanelConfig = (panelId: PanelKind, size?: string): ComponentItemConfig => {
-    const definition = panelDefinitionMap[panelId];
-    const config: ComponentItemConfig = {
-      type: 'component',
-      componentType: 'colored-panel',
-      title: definition.title,
-      componentState: { label: definition.label, color: definition.color },
-      header: {
-        popout: false,
-      },
-    };
-
-    if (size !== undefined) {
-      config.size = size;
-    }
-
-    return config;
-  };
-
-  const layoutConfig: LayoutConfig = useMemo(
-    () => ({
-      settings: {
-        showPopoutIcon: false,
-      },
-      root: {
-        type: 'row',
-        content: [
-          createPanelConfig('red', '50%'),
-          {
-            type: 'column',
-            content: [
-              createPanelConfig('blue', '40%'),
-              {
-                type: 'row',
-                content: [createPanelConfig('yellow', '50%'), createPanelConfig('green', '50%')],
-              },
-            ],
-          },
-        ],
-      },
-    }),
-    []
-  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -120,7 +112,7 @@ function GoldenLayoutWrapper({ containerId = 'golden-layout-container' }: Golden
     };
 
     registerComponent('colored-panel', ColoredPanel);
-    layout.loadLayout(layoutConfig);
+    layout.loadLayout(getInitialLayoutConfig());
 
     const handleResize = () => {
       if (layout && container) {
@@ -145,7 +137,7 @@ function GoldenLayoutWrapper({ containerId = 'golden-layout-container' }: Golden
 
     const disposeCommandEffect = effect(() => {
       const command = latestCommand.value;
-      if (!command || command.type !== 'palette:add-panel') {
+      if (!command || command.name !== 'palette.add-panel') {
         return;
       }
 
@@ -174,7 +166,7 @@ function GoldenLayoutWrapper({ containerId = 'golden-layout-container' }: Golden
       layoutRef.current = null;
       disposeCommandEffect();
     };
-  }, [layoutConfig]);
+  }, []);
 
   const handleDragOver = useCallback<JSX.DragEventHandler<HTMLDivElement>>((event) => {
     const dataTransfer = event.dataTransfer;
@@ -193,8 +185,13 @@ function GoldenLayoutWrapper({ containerId = 'golden-layout-container' }: Golden
     event.preventDefault();
 
     try {
-      const command = JSON.parse(rawCommand) as { type: string; payload?: { panelId?: PanelKind } };
-      emitCommand(command.type, command.payload, 'drag');
+      const command = JSON.parse(rawCommand) as {
+        name: string;
+        label: string;
+        type: string;
+        payload?: { panelId?: PanelKind };
+      };
+      emitCommand(command.name, command.label, command.type, command.payload, 'drag');
     } catch (error) {
       console.warn('Failed to parse dropped command payload', error);
     }

@@ -6,6 +6,8 @@ export type CommandPayload = Record<string, unknown> | undefined;
 
 export interface CommandEvent<TPayload = CommandPayload> {
   readonly id: string;
+  readonly name: string;
+  readonly label: string;
   readonly type: string;
   readonly payload: TPayload;
   readonly source: CommandSource;
@@ -20,12 +22,16 @@ export const latestCommand = signal<CommandEvent | null>(null);
 export const commandHistory = signal<CommandEvent[]>([]);
 
 export function emitCommand<TPayload extends CommandPayload = CommandPayload>(
+  name: string,
+  label: string,
   type: string,
   payload?: TPayload,
   source: CommandSource = 'click',
 ): CommandEvent<TPayload> {
   const event: CommandEvent<TPayload> = {
     id: generateCommandId(),
+    name,
+    label,
     type,
     payload: (payload ?? undefined) as TPayload,
     source,
@@ -34,6 +40,13 @@ export function emitCommand<TPayload extends CommandPayload = CommandPayload>(
 
   commandHistory.value = [...commandHistory.value.slice(-99), event];
   latestCommand.value = event;
+  // Mock instrumentation to observe command flow in the example app.
+  console.log(`[CommandBus] ${event.name}`, {
+    label: event.label,
+    type: event.type,
+    payload: event.payload ?? null,
+    source: event.source,
+  });
 
   return event;
 }

@@ -1,6 +1,7 @@
-import { useMemo } from 'preact/hooks';
-import type { JSX } from 'preact';
+import { useMemo, useCallback } from 'preact/hooks';
+import type { JSX, TargetedEvent } from 'preact';
 import { memo } from 'preact/compat';
+import { emitCommand } from '../signals/commandBus';
 
 interface RightSidebarProps {
   // RightSidebar doesn't need Golden Layout props currently
@@ -36,6 +37,16 @@ function RightSidebar(_props: RightSidebarProps) {
     []
   );
 
+  const handleThemeChange = useCallback((event: TargetedEvent<HTMLSelectElement>) => {
+    emitCommand('properties.theme-change', 'Change Panel Theme', 'properties.action', { theme: event.currentTarget.value });
+  }, []);
+
+  const handleLayoutModeChange = useCallback((event: TargetedEvent<HTMLSelectElement>) => {
+    emitCommand('properties.layout-mode-change', 'Change Layout Mode', 'properties.action', {
+      mode: event.currentTarget.value,
+    });
+  }, []);
+
   return (
     <div style={containerStyle}>
       <div style={{ marginBottom: '16px' }}>
@@ -65,7 +76,7 @@ function RightSidebar(_props: RightSidebarProps) {
           >
             Panel Theme
           </label>
-          <select style={selectStyle}>
+          <select style={selectStyle} onChange={handleThemeChange}>
             {THEME_OPTIONS.map((option) => (
               <option key={option} value={option}>
                 {option}
@@ -84,7 +95,7 @@ function RightSidebar(_props: RightSidebarProps) {
           >
             Layout Mode
           </label>
-          <select style={selectStyle}>
+          <select style={selectStyle} onChange={handleLayoutModeChange}>
             {LAYOUT_OPTIONS.map((option) => (
               <option key={option} value={option}>
                 {option}
